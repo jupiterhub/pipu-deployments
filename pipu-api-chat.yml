@@ -1,0 +1,80 @@
+#########
+# Prerequisites:
+# 1. Create a secret in the cluster for google credentials:
+# `kubectl create secret generic google-application-credentials --from-file=google-credentials.json=/home/jupiter/dev/credentials/pipu-chat-dev-eb02ad1b79b3.json`
+#
+##########
+apiVersion: v1
+kind: Service
+metadata:
+  name: pipu-api-chat-service
+spec:
+  # use Ingress to access
+#  type: NodePort
+  ports:
+    - name: http
+      port: 8081
+      targetPort: 8081
+  selector:
+    app: pipu-api-chat
+  sessionAffinity: None
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pipu-account-chat
+  labels:
+    account: pipu-api-chat
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pipu-api-chat
+  labels:
+    app: pipu-api-chat
+    tier: api
+    group: pipu-chat
+    version: v1
+spec:
+  selector:
+    matchLabels:
+      app: pipu-api-chat
+      tier: api
+      group: pipu-chat
+      version: v1
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: pipu-api-chat
+        tier: api
+        group: pipu-chat
+        version: v1
+    spec:
+      serviceAccountName: pipu-account-chat
+      volumes:
+        - name: google-credentials-volume
+          secret:
+            secretName: google-application-credentials
+      containers:
+        - name: pipu-api-chat
+          image: jupiterhub/pipu-api-chat:1.0.0
+          imagePullPolicy: Never
+          resources:
+            limits:
+              cpu: 10m
+              memory: 60Mi
+            requests:
+              cpu: 5m
+              memory: 30Mi
+          ports:
+            - containerPort: 8081
+          volumeMounts:
+            - name: google-credentials-volume
+              mountPath: /var/secrets/google
+              readOnly: true
+          env:
+            - name: CHATDIR_HOST
+              value: pipu-api-chat-directory-service
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: /var/secrets/google/google-credentials.json

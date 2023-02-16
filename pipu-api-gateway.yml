@@ -1,0 +1,55 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: pipu-api-gateway
+spec:
+  selector:
+    istio: ingressgateway # use istio default controller
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - "*"
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: pipu-api-chat-directory-route
+spec:
+  hosts:
+    - "*"
+  gateways:
+    - pipu-api-gateway
+  http:
+    - match:
+        - uri:
+            prefix: /directory
+      route:
+        - destination:
+            host: pipu-api-chat-directory-service
+            port:
+              number: 8080
+
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: pipu-api-chat-route
+spec:
+  hosts:
+    - "*"
+  gateways:
+    - pipu-api-gateway
+  http:
+    - match:
+        - uri:
+            prefix: /message
+        - uri:
+            prefix: /chat
+      route:
+        - destination:
+            host: pipu-api-chat-service
+            port:
+              number: 8081
